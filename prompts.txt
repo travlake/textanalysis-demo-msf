@@ -1,0 +1,9 @@
+Sentiment:
+You are a financial analyst. Given the following text, assess whether the
+firm has positive/neutral/negative views about near-run growth. Return
+both a label and a one-sentence justification
+
+Topic modeling:
+Identify the main economic topics discussed in the following text. For each
+topic, provide a short label, state whether it is a major or minor topic in the
+text, explain why it is relevant for investors

@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financial Text Analysis</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; color: #1a1a2e; min-height: 100vh; }
+        .container { max-width: 1000px; margin: 0 auto; padding: 2rem 1rem; }
+        h1 { text-align: center; margin-bottom: 0.25rem; font-size: 1.75rem; }
+        .subtitle { text-align: center; color: #666; margin-bottom: 2rem; font-size: 0.95rem; }
+        .card { background: #fff; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+        .upload-area { border: 2px dashed #cbd5e1; border-radius: 12px; padding: 2.5rem; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; background: #fff; margin-bottom: 1.5rem; }
+        .upload-area:hover, .upload-area.dragover { border-color: #3b82f6; background: #eff6ff; }
+        .upload-area p { color: #64748b; margin-top: 0.5rem; font-size: 0.9rem; }
+        .upload-icon { font-size: 2.5rem; color: #94a3b8; }
+        .file-name { margin-top: 0.75rem; font-weight: 600; color: #1e293b; }
+        .btn { display: inline-block; padding: 0.7rem 2rem; background: #3b82f6; color: #fff; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; transition: background 0.2s; }
+        .btn:hover { background: #2563eb; }
+        .btn:disabled { background: #94a3b8; cursor: not-allowed; }
+        .btn-wrap { text-align: center; margin-bottom: 1.5rem; }
+        .spinner { display: none; text-align: center; margin: 1.5rem 0; }
+        .spinner.active { display: block; }
+        .spinner-circle { width: 36px; height: 36px; border: 3px solid #e2e8f0; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 0.5rem; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner p { color: #64748b; font-size: 0.9rem; }
+        .error { background: #fef2f2; color: #dc2626; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; display: none; }
+        .results { display: none; }
+
+        /* Overall Sentiment Gauge */
+        .sentiment-hero { background: #fff; border-radius: 16px; padding: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 1.5rem; text-align: center; }
+        .sentiment-hero h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; margin-bottom: 1.5rem; }
+        .gauge-container { position: relative; width: 260px; height: 145px; margin: 0 auto 1rem; }
+        .gauge-bg { fill: none; stroke: #e2e8f0; stroke-width: 18; }
+        .gauge-fill { fill: none; stroke-width: 18; stroke-linecap: round; transition: stroke-dashoffset 1.2s ease, stroke 0.8s ease; }
+        .gauge-score { font-size: 2.8rem; font-weight: 700; }
+        .gauge-label-text { font-size: 0.9rem; fill: #64748b; }
+        .gauge-endpoints { font-size: 0.7rem; fill: #94a3b8; }
+        .sentiment-label-big { display: inline-block; padding: 0.35rem 1.2rem; border-radius: 999px; font-size: 1.1rem; font-weight: 700; margin-bottom: 0.75rem; }
+        .sentiment-justification { color: #475569; font-size: 0.95rem; line-height: 1.5; max-width: 600px; margin: 0 auto; }
+        .sentiment-sources { display: flex; justify-content: center; gap: 2rem; margin-top: 1.25rem; flex-wrap: wrap; }
+        .source-item { text-align: center; }
+        .source-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: #94a3b8; display: block; margin-bottom: 0.2rem; }
+        .source-value { font-size: 1.4rem; font-weight: 700; }
+
+        /* Analysis grid */
+        .analysis-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem; }
+        @media (max-width: 700px) { .analysis-grid { grid-template-columns: 1fr; } }
+        .result-card { background: #fff; border-radius: 12px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+        .result-card h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin-bottom: 0.75rem; }
+
+        /* Dictionary sentiment bar */
+        .dict-bar-wrap { margin: 0.75rem 0; }
+        .dict-bar { display: flex; height: 28px; border-radius: 6px; overflow: hidden; font-size: 0.75rem; font-weight: 600; }
+        .dict-bar-pos { background: #22c55e; color: #fff; display: flex; align-items: center; justify-content: center; transition: width 0.8s ease; }
+        .dict-bar-neg { background: #ef4444; color: #fff; display: flex; align-items: center; justify-content: center; transition: width 0.8s ease; }
+        .dict-words { display: flex; gap: 1.5rem; margin-top: 0.75rem; }
+        .dict-words-col { flex: 1; }
+        .dict-words-col h4 { font-size: 0.75rem; text-transform: uppercase; color: #64748b; margin-bottom: 0.35rem; }
+        .dict-word-item { font-size: 0.85rem; padding: 0.15rem 0; color: #334155; }
+        .dict-word-count { color: #94a3b8; font-size: 0.8rem; margin-left: 0.25rem; }
+
+        /* Bag of words */
+        .bow-stats { display: flex; gap: 1.5rem; margin-bottom: 0.75rem; }
+        .bow-stat { text-align: center; }
+        .bow-stat-val { font-size: 1.5rem; font-weight: 700; color: #1e293b; }
+        .bow-stat-label { font-size: 0.7rem; text-transform: uppercase; color: #94a3b8; }
+        .word-cloud { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: baseline; padding: 0.5rem 0; }
+        .word-tag { display: inline-block; padding: 0.2rem 0.6rem; background: #f1f5f9; border-radius: 6px; color: #334155; transition: transform 0.2s; }
+        .word-tag:hover { transform: scale(1.08); }
+
+        /* Topics */
+        .badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600; }
+        .badge-positive { background: #dcfce7; color: #16a34a; }
+        .badge-neutral { background: #f1f5f9; color: #475569; }
+        .badge-negative { background: #fee2e2; color: #dc2626; }
+        .badge-major { background: #dbeafe; color: #2563eb; font-size: 0.75rem; }
+        .badge-minor { background: #f1f5f9; color: #64748b; font-size: 0.75rem; }
+        .topic-item { padding: 0.6rem 0; border-bottom: 1px solid #f1f5f9; }
+        .topic-item:last-child { border-bottom: none; }
+        .topic-label { font-weight: 600; margin-right: 0.5rem; }
+        .topic-relevance { color: #475569; font-size: 0.88rem; margin-top: 0.2rem; line-height: 1.4; }
+
+        /* Preview */
+        .preview-section { margin-top: 0; }
+        .preview-toggle { background: none; border: none; color: #3b82f6; cursor: pointer; font-size: 0.9rem; padding: 0; }
+        .preview-toggle:hover { text-decoration: underline; }
+        .preview-text { background: #f8fafc; padding: 1rem; border-radius: 8px; margin-top: 0.75rem; font-size: 0.85rem; color: #475569; line-height: 1.6; white-space: pre-wrap; display: none; max-height: 200px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Financial Text Analysis</h1>
+        <p class="subtitle">Upload a document for AI-powered sentiment analysis and topic modeling</p>
+
+        <div class="upload-area" id="dropZone">
+            <div class="upload-icon">&#128196;</div>
+            <p>Drag & drop a .txt or .pdf file here, or click to browse</p>
+            <div class="file-name" id="fileName"></div>
+            <input type="file" id="fileInput" accept=".txt,.pdf" hidden>
+        </div>
+
+        <div class="btn-wrap">
+            <button class="btn" id="analyzeBtn" disabled>Analyze Document</button>
+        </div>
+
+        <div class="spinner" id="spinner">
+            <div class="spinner-circle"></div>
+            <p>Analyzing document...</p>
+        </div>
+
+        <div class="error" id="errorBox"></div>
+
+        <div class="results" id="results">
+            <!-- Overall Sentiment Gauge -->
+            <div class="sentiment-hero" id="sentimentHero">
+                <h2>Overall Sentiment</h2>
+                <div class="gauge-container">
+                    <svg viewBox="0 0 260 145" width="260" height="145">
+                        <path class="gauge-bg" d="M 25 130 A 105 105 0 0 1 235 130" />
+                        <path class="gauge-fill" id="gaugeFill" d="M 25 130 A 105 105 0 0 1 235 130" />
+                        <text x="130" y="115" text-anchor="middle" class="gauge-score" id="gaugeScore">--</text>
+                        <text x="130" y="138" text-anchor="middle" class="gauge-label-text" id="gaugeLabel">Awaiting analysis</text>
+                        <text x="20" y="145" text-anchor="start" class="gauge-endpoints">1</text>
+                        <text x="240" y="145" text-anchor="end" class="gauge-endpoints">100</text>
+                    </svg>
+                </div>
+                <div id="sentimentBadge"></div>
+                <p class="sentiment-justification" id="sentimentJustification"></p>
+                <div class="sentiment-sources" id="sentimentSources"></div>
+            </div>
+
+            <!-- Analysis Cards -->
+            <div class="analysis-grid">
+                <div class="result-card">
+                    <h3>Dictionary Sentiment (Loughran-McDonald)</h3>
+                    <div id="dictContent"></div>
+                </div>
+                <div class="result-card">
+                    <h3>Bag of Words</h3>
+                    <div id="bowContent"></div>
+                </div>
+            </div>
+
+            <div class="analysis-grid">
+                <div class="result-card" style="grid-column: 1 / -1;">
+                    <h3>Topics</h3>
+                    <div id="topicsContent"></div>
+                </div>
+            </div>
+
+            <div class="card preview-section">
+                <button class="preview-toggle" id="previewToggle">Show text preview</button>
+                <div class="preview-text" id="previewText"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const fileName = document.getElementById('fileName');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const spinner = document.getElementById('spinner');
+        const errorBox = document.getElementById('errorBox');
+        const results = document.getElementById('results');
+        let selectedFile = null;
+
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', e => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) selectFile(e.dataTransfer.files[0]);
+        });
+        fileInput.addEventListener('change', () => { if (fileInput.files.length) selectFile(fileInput.files[0]); });
+
+        function selectFile(file) {
+            const name = file.name.toLowerCase();
+            if (!name.endsWith('.txt') && !name.endsWith('.pdf')) {
+                showError('Please select a .txt or .pdf file.');
+                return;
+            }
+            selectedFile = file;
+            fileName.textContent = file.name;
+            analyzeBtn.disabled = false;
+            errorBox.style.display = 'none';
+        }
+
+        function showError(msg) {
+            errorBox.textContent = msg;
+            errorBox.style.display = 'block';
+            results.style.display = 'none';
+        }
+
+        analyzeBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+            analyzeBtn.disabled = true;
+            spinner.classList.add('active');
+            errorBox.style.display = 'none';
+            results.style.display = 'none';
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            try {
+                const resp = await fetch('/analyze', { method: 'POST', body: formData });
+                const data = await resp.json();
+                if (!resp.ok) { showError(data.error || 'Analysis failed.'); return; }
+                renderResults(data);
+            } catch (err) {
+                showError('Network error. Please try again.');
+            } finally {
+                spinner.classList.remove('active');
+                analyzeBtn.disabled = false;
+            }
+        });
+
+        function scoreToColor(score) {
+            if (score >= 65) return '#22c55e';
+            if (score >= 45) return '#f59e0b';
+            return '#ef4444';
+        }
+
+        function renderGauge(score) {
+            const gaugeFill = document.getElementById('gaugeFill');
+            const gaugeScore = document.getElementById('gaugeScore');
+            const gaugeLabel = document.getElementById('gaugeLabel');
+            // Arc length calculation: semicircle arc of radius 105
+            const totalLen = Math.PI * 105; // ~329.87
+            const pct = (score - 1) / 99;
+            const offset = totalLen * (1 - pct);
+            gaugeFill.style.strokeDasharray = totalLen;
+            gaugeFill.style.strokeDashoffset = totalLen; // start empty
+            gaugeFill.style.stroke = scoreToColor(score);
+            // Trigger animation
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    gaugeFill.style.strokeDashoffset = offset;
+                });
+            });
+            gaugeScore.textContent = score;
+            gaugeScore.style.fill = scoreToColor(score);
+            const label = score >= 65 ? 'Positive' : score >= 45 ? 'Neutral' : 'Negative';
+            gaugeLabel.textContent = label + ' outlook';
+        }
+
+        function renderResults(data) {
+            const s = data.sentiment;
+            const ds = data.dictionary_sentiment;
+            const bow = data.bag_of_words;
+
+            // --- Overall Sentiment Gauge ---
+            renderGauge(s.score);
+
+            const badgeClass = s.label === 'positive' ? 'badge-positive' : s.label === 'negative' ? 'badge-negative' : 'badge-neutral';
+            document.getElementById('sentimentBadge').innerHTML =
+                `<span class="sentiment-label-big ${badgeClass}">${s.label.charAt(0).toUpperCase() + s.label.slice(1)}</span>`;
+            document.getElementById('sentimentJustification').textContent = s.justification;
+
+            document.getElementById('sentimentSources').innerHTML =
+                `<div class="source-item"><span class="source-label">LLM Score</span><span class="source-value" style="color:${scoreToColor(s.score)}">${s.score}</span></div>` +
+                `<div class="source-item"><span class="source-label">Dictionary Score</span><span class="source-value" style="color:${scoreToColor(ds.score)}">${ds.score}</span></div>` +
+                `<div class="source-item"><span class="source-label">Positive Words</span><span class="source-value" style="color:#22c55e">${ds.positive_count}</span></div>` +
+                `<div class="source-item"><span class="source-label">Negative Words</span><span class="source-value" style="color:#ef4444">${ds.negative_count}</span></div>`;
+
+            // --- Dictionary Sentiment ---
+            const total = ds.positive_count + ds.negative_count;
+            const posPct = total > 0 ? Math.round((ds.positive_count / total) * 100) : 50;
+            const negPct = 100 - posPct;
+            let dictHtml = `<div class="dict-bar-wrap"><div class="dict-bar">` +
+                `<div class="dict-bar-pos" style="width:${posPct}%">${posPct > 10 ? posPct + '% pos' : ''}</div>` +
+                `<div class="dict-bar-neg" style="width:${negPct}%">${negPct > 10 ? negPct + '% neg' : ''}</div>` +
+                `</div></div>`;
+            dictHtml += `<div class="dict-words">`;
+            dictHtml += `<div class="dict-words-col"><h4 style="color:#22c55e">Top Positive</h4>`;
+            (ds.top_positive || []).forEach(w => {
+                dictHtml += `<div class="dict-word-item">${escapeHtml(w.word)}<span class="dict-word-count">(${w.count})</span></div>`;
+            });
+            if (!ds.top_positive?.length) dictHtml += `<div class="dict-word-item" style="color:#94a3b8">None found</div>`;
+            dictHtml += `</div>`;
+            dictHtml += `<div class="dict-words-col"><h4 style="color:#ef4444">Top Negative</h4>`;
+            (ds.top_negative || []).forEach(w => {
+                dictHtml += `<div class="dict-word-item">${escapeHtml(w.word)}<span class="dict-word-count">(${w.count})</span></div>`;
+            });
+            if (!ds.top_negative?.length) dictHtml += `<div class="dict-word-item" style="color:#94a3b8">None found</div>`;
+            dictHtml += `</div></div>`;
+            document.getElementById('dictContent').innerHTML = dictHtml;
+
+            // --- Bag of Words ---
+            const maxCount = bow.top_words.length ? bow.top_words[0].count : 1;
+            let bowHtml = `<div class="bow-stats">` +
+                `<div class="bow-stat"><div class="bow-stat-val">${bow.total_words.toLocaleString()}</div><div class="bow-stat-label">Total Words</div></div>` +
+                `<div class="bow-stat"><div class="bow-stat-val">${bow.unique_words.toLocaleString()}</div><div class="bow-stat-label">Unique Words</div></div>` +
+                `</div>`;
+            bowHtml += `<div class="word-cloud">`;
+            bow.top_words.forEach(w => {
+                const ratio = w.count / maxCount;
+                const size = 0.7 + ratio * 0.9; // 0.7rem to 1.6rem
+                const opacity = 0.4 + ratio * 0.6;
+                bowHtml += `<span class="word-tag" style="font-size:${size.toFixed(2)}rem;opacity:${opacity.toFixed(2)}" title="${w.count} occurrences">${escapeHtml(w.word)}</span>`;
+            });
+            bowHtml += `</div>`;
+            document.getElementById('bowContent').innerHTML = bowHtml;
+
+            // --- Topics ---
+            const topics = data.topics.topics || [];
+            document.getElementById('topicsContent').innerHTML = topics.map(t =>
+                `<div class="topic-item">` +
+                `<span class="topic-label">${escapeHtml(t.label)}</span>` +
+                `<span class="badge ${t.significance === 'major' ? 'badge-major' : 'badge-minor'}">${t.significance}</span>` +
+                `<p class="topic-relevance">${escapeHtml(t.investor_relevance)}</p>` +
+                `</div>`
+            ).join('');
+
+            // --- Preview ---
+            const previewText = document.getElementById('previewText');
+            previewText.textContent = data.text_preview || '';
+            previewText.style.display = 'none';
+            document.getElementById('previewToggle').textContent = 'Show text preview';
+
+            results.style.display = 'block';
+        }
+
+        document.getElementById('previewToggle').addEventListener('click', () => {
+            const pt = document.getElementById('previewText');
+            const btn = document.getElementById('previewToggle');
+            if (pt.style.display === 'none') { pt.style.display = 'block'; btn.textContent = 'Hide text preview'; }
+            else { pt.style.display = 'none'; btn.textContent = 'Show text preview'; }
+        });
+
+        function escapeHtml(str) {
+            const d = document.createElement('div');
+            d.textContent = str;
+            return d.innerHTML;
+        }
+    </script>
+</body>
+</html>
