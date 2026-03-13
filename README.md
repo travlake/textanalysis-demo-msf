@@ -1,6 +1,6 @@
 # Financial Text Analysis Dashboard
 
-A Flask web app that analyzes uploaded `.txt` and `.pdf` documents using Claude (Sonnet) and traditional NLP techniques. Built as a starting point for students building their own LLM-powered textual analysis tools.
+A Flask web app that analyzes uploaded `.txt` and `.pdf` documents using Claude (Sonnet) and traditional NLP techniques. Developed for **FIN 284T: AI and Portfolio Management** (MSF program, McCombs School of Business) as a starting point for students building their own LLM-powered textual analysis tools.
 
 **Live demo:** [travlake.pythonanywhere.com](https://travlake.pythonanywhere.com)
 
@@ -109,46 +109,25 @@ Edit the `MODEL` variable in `app.py`. Options include:
 - `claude-haiku-4-5-20251001` (faster, cheaper, slightly less capable)
 - `claude-opus-4-6` (most capable, slower, more expensive)
 
+### Swap in a different LLM provider
+
+The app uses the Anthropic SDK, but the pattern is easy to adapt to any LLM API. The `call_claude()` function is the only place the API is called — replace it with a call to OpenAI, Google Gemini, Mistral, or any provider that accepts a text prompt and returns a text response. The prompts themselves are plain text and not Anthropic-specific, so they transfer directly.
+
 ### Accept other file types
 
 The `extract_text()` function handles `.txt` and `.pdf`. To add `.docx`, `.csv`, or other formats, add a new branch there and install the relevant parsing library.
 
-## Deploying to PythonAnywhere
+## Deployment
 
-1. Create a free account at [pythonanywhere.com](https://www.pythonanywhere.com/)
-2. Open a Bash console and clone your repo:
-   ```bash
-   git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git
-   ```
-3. Create a virtualenv:
-   ```bash
-   mkvirtualenv --python=/usr/bin/python3.13 textanalysis
-   pip install -r ~/YOUR_REPO/requirements.txt
-   ```
-4. Create a `.env` file with your API key:
-   ```bash
-   echo "ANTHROPIC_API_KEY=sk-ant-..." > ~/YOUR_REPO/.env
-   ```
-5. On the **Web** tab, set:
-   - **Source code:** `/home/YOUR_USERNAME/YOUR_REPO`
-   - **Virtualenv:** `/home/YOUR_USERNAME/.virtualenvs/textanalysis`
-6. Edit the **WSGI configuration file** (linked on the Web tab):
-   ```python
-   import sys
-   import os
+The app is a standard Flask application with no database, no background workers, and no platform-specific code. It runs anywhere Python runs. Some low-friction options:
 
-   path = '/home/YOUR_USERNAME/YOUR_REPO'
-   if path not in sys.path:
-       sys.path.append(path)
+- **[PythonAnywhere](https://www.pythonanywhere.com/)** — Browser-based setup, no CLI needed. Clone your repo, create a virtualenv, point the WSGI config at your app, and set your API key as an environment variable. Free tier available (may restrict outbound API calls).
+- **[Render](https://render.com/)** — Connect your GitHub repo and deploy automatically on push. Free tier available.
+- **[Railway](https://railway.app/)** — Similar Git-based deploy. Detects Flask apps automatically.
+- **[Heroku](https://www.heroku.com/)** — Add a `Procfile` with `web: gunicorn app:app` and deploy via Git.
+- **Any VPS** (DigitalOcean, AWS EC2, etc.) — `pip install`, set your `.env`, and run behind gunicorn/nginx.
 
-   from dotenv import load_dotenv
-   load_dotenv(os.path.join(path, '.env'))
-
-   from app import app as application
-   ```
-7. Hit **Reload** on the Web tab
-
-**Note:** Free PythonAnywhere accounts restrict outbound HTTP to an allowlist. The Anthropic API (`api.anthropic.com`) may require a paid account for unrestricted access.
+For all platforms, you'll need to set the `ANTHROPIC_API_KEY` environment variable (or deploy a `.env` file) and ensure the host allows outbound HTTPS to `api.anthropic.com`.
 
 ## For AI Agents
 
