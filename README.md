@@ -105,7 +105,7 @@ To add a new LLM-powered analysis (e.g., named entity extraction, risk scoring, 
 ### Change the model
 
 Edit the `MODEL` variable in `app.py`. Options include:
-- `claude-sonnet-4-20250514` (current — good balance of speed and quality)
+- `claude-sonnet-4-6` (current — good balance of speed and quality)
 - `claude-haiku-4-5-20251001` (faster, cheaper, slightly less capable)
 - `claude-opus-4-6` (most capable, slower, more expensive)
 

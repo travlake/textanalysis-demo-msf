@@ -13,7 +13,7 @@ load_dotenv()
 
 app = Flask(__name__)
 
-MODEL = "claude-sonnet-4-20250514"
+MODEL = "claude-sonnet-4-6"
 MAX_TEXT_LENGTH = 100_000
 
 client = anthropic.Anthropic(
